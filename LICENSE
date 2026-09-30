@@ -1,0 +1,15 @@
+Copyright (c) 2026 akari-dev. All Rights Reserved.
+
+This software and its source code are proprietary and confidential.
+
+Unauthorised copying, distribution, modification, public posting, sublicensing
+or use of this software or its source code, in whole or in part, by any means,
+is strictly prohibited without prior written permission from the copyright
+holder.
+
+Third-party components remain under their own respective licenses; nothing in
+this statement limits obligations imposed by those licenses. The client
+embeds the mihomo kernel (MIT, https://github.com/Metacubex/mihomo) — its
+copyright notice must be retained in all distributions.
+
+For licensing enquiries contact the akari-dev organisation owners.
