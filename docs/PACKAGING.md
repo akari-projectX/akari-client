@@ -9,7 +9,7 @@ work list to finish M4.
 - [ ] Version from tag: `make dist VERSION=vX.Y.Z` (ldflags inject version and
       commit; `akari-client version` prints both plus the kernel pin).
 - [ ] GPL-3.0 corresponding source for the kernel: per release, archive
-      upstream mihomo v1.19.31 source + `third_party/mihomo/` and publish it
+      upstream mihomo v1.19.32 source + `third_party/mihomo/` and publish it
       next to the installers (or ship a written offer). Reference it in the
       installer and About text.
 - [ ] Ship `THIRD-PARTY-LICENSES.txt` and `mihomo-LICENSE.txt` with every

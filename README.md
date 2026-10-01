@@ -2,7 +2,7 @@
 
 Desktop client for Akari panel users: a system-tray app that fetches the
 user's Clash profile from the panel and runs the
-[mihomo](https://github.com/MetaCubeX/mihomo) kernel (v1.19.31, GPL-3.0) as a
+[mihomo](https://github.com/MetaCubeX/mihomo) kernel (v1.19.32, GPL-3.0) as a
 **separate process** to provide a local mixed proxy (HTTP + SOCKS5) on
 `127.0.0.1:7890`, optionally set as the system proxy.
 

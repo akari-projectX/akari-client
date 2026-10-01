@@ -1,7 +1,7 @@
 // Package core runs the mihomo kernel as a separate process and controls it
 // through mihomo's external-controller REST API. It is the only package
 // that knows mihomo's config schema, CLI and API (none of which is a
-// stable contract — see docs/DECISIONS.md D1). Pinned: v1.19.31.
+// stable contract — see docs/DECISIONS.md D1). Pinned: v1.19.32.
 //
 // mihomo is GPL-3.0. It is shipped as an unmodified, separate executable
 // next to akari-client and never linked into it.
@@ -18,7 +18,7 @@ import (
 
 // MihomoVersion is the pinned kernel version (keep in sync with
 // third_party/mihomo/go.mod).
-const MihomoVersion = "v1.19.31"
+const MihomoVersion = "v1.19.32"
 
 // PreferredGroup is the selector the panel renders (sub.rs render_clash).
 const PreferredGroup = "PROXY"

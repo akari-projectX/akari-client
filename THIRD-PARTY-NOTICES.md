@@ -46,7 +46,7 @@ limitations under the License.
 ## Shipped alongside: mihomo (GPL-3.0)
 
 - Project: [MetaCubeX/mihomo](https://github.com/MetaCubeX/mihomo), tag
-  **v1.19.31**, unmodified.
+  **v1.19.32**, unmodified.
 - License: GNU General Public License v3.0 (`mihomo-LICENSE.txt` in every
   distribution).
 - Corresponding source: the upstream tag plus this repository's
@@ -60,4 +60,4 @@ limitations under the License.
 
 Note: earlier planning documents (`akari-panel/PLAN.md`, this repo's
 `LICENSE` and earlier `README.md`/`CLAUDE.md`) described mihomo as MIT. That
-is incorrect for v1.19.31; see docs/DECISIONS.md D1.
+is incorrect for v1.19.32; see docs/DECISIONS.md D1.

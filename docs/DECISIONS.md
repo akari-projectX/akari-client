@@ -168,3 +168,6 @@ forwarded into the same log; its level is `warning` by default because
 `info` logs every destination host — `-log-level debug` enables it.
 Single instance: exclusive non-blocking lock on `akari-client.lock`
 (flock / LockFileEx), released by the OS if the process dies.
+
+## 2026-10-02: kernel bumped to v1.19.32
+License unchanged (GPL-3.0); upstream replace directives unchanged; `make ci` green (real-kernel integration tests, govulncheck: only allow-listed GO-2026-5932).
