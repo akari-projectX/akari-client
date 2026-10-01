@@ -53,6 +53,9 @@ type Deps struct {
 	Clock    clock.Clock
 	// Supervisor tuning (zero = defaults).
 	Supervisor supervisor.Config
+	// KernelLogLevel is mihomo's log level (default "warning": "info" logs
+	// every destination host, which we do not want on disk by default).
+	KernelLogLevel string
 	// Netwatch enables network-change/resume self-healing (nil = off).
 	Netwatch *netwatch.Watcher
 }
@@ -197,7 +200,11 @@ func (c coreAdapter) Start() error {
 		return errors.New("no subscription profile yet")
 	}
 	s := a.d.Settings.Get()
-	if err := a.d.Engine.Start(prof, core.Options{MixedPort: s.Port()}); err != nil {
+	lvl := a.d.KernelLogLevel
+	if lvl == "" {
+		lvl = "warning"
+	}
+	if err := a.d.Engine.Start(prof, core.Options{MixedPort: s.Port(), LogLevel: lvl}); err != nil {
 		return err
 	}
 	if s.SelectedNode != "" {
@@ -208,7 +215,15 @@ func (c coreAdapter) Start() error {
 	return nil
 }
 
-func (c coreAdapter) Stop() error                       { return c.a.d.Engine.Stop() }
+func (c coreAdapter) Stop() error { return c.a.d.Engine.Stop() }
+
+// Exited forwards the engine's exit notification when it has one.
+func (c coreAdapter) Exited() <-chan struct{} {
+	if ex, ok := c.a.d.Engine.(supervisor.Exiter); ok {
+		return ex.Exited()
+	}
+	return nil
+}
 func (c coreAdapter) Healthy(ctx context.Context) error { return c.a.d.Engine.Healthy(ctx) }
 
 func (a *App) onCoreEvent(st supervisor.State, err error) {

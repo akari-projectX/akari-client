@@ -4,7 +4,7 @@
 //
 // Usage:
 //
-//	akari-client                       run (tray UI, under the crash watchdog)
+//	akari-client                       run (tray UI)
 //	akari-client --headless            run without UI until SIGINT/SIGTERM
 //	akari-client login <url> [token]   enroll a subscription, then exit
 //	akari-client version
@@ -36,15 +36,20 @@ import (
 	"github.com/akari-projectX/akari-client/internal/ui/tray"
 	"github.com/akari-projectX/akari-client/internal/ui/web"
 	"github.com/akari-projectX/akari-client/internal/version"
-	"github.com/akari-projectX/akari-client/internal/watchdog"
+)
+
+// Exit codes.
+const (
+	exitOK             = 0
+	exitAlreadyRunning = 3
+	exitFatal          = 4
 )
 
 type options struct {
-	dataDir    string
-	headless   bool
-	noWatchdog bool
-	logLevel   string
-	verbose    bool
+	dataDir  string
+	headless bool
+	logLevel string
+	verbose  bool
 }
 
 func main() { os.Exit(run(os.Args[1:])) }
@@ -54,7 +59,6 @@ func run(args []string) int {
 	var o options
 	fs.StringVar(&o.dataDir, "data-dir", "", "settings/log directory (default: OS config dir/Akari)")
 	fs.BoolVar(&o.headless, "headless", false, "run without the tray UI")
-	fs.BoolVar(&o.noWatchdog, "no-watchdog", false, "do not run under the crash-restart watchdog")
 	fs.StringVar(&o.logLevel, "log-level", envOr("AKARI_LOG_LEVEL", "info"), "debug|info|warn|error")
 	fs.BoolVar(&o.verbose, "v", false, "also log to stderr")
 	if err := fs.Parse(args); err != nil {
@@ -74,10 +78,6 @@ func run(args []string) int {
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n", fs.Arg(0))
 		return 2
-	}
-
-	if !o.noWatchdog && os.Getenv(watchdog.ChildEnv) == "" {
-		return supervise(o, args)
 	}
 	return client(o)
 }
@@ -99,27 +99,6 @@ func setup(o options, name string) (paths.Dirs, *slog.Logger, io.Closer, error) 
 	return dirs, logger.With("proc", name), closer, nil
 }
 
-func supervise(o options, args []string) int {
-	_, log, closer, err := setup(o, "watchdog")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return watchdog.ExitFatal
-	}
-	defer closer.Close()
-	spawn, err := watchdog.ExecSpawner(args)
-	if err != nil {
-		log.Error("watchdog", "err", err)
-		return watchdog.ExitFatal
-	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	code, err := watchdog.Run(ctx, log, clock.Real{}, watchdog.Policy{}, spawn)
-	if err != nil {
-		log.Error("watchdog stopped", "err", err, "code", code)
-	}
-	return code
-}
-
 type deps struct {
 	dirs  paths.Dirs
 	log   *slog.Logger
@@ -131,24 +110,24 @@ func build(o options, name string) (*deps, int) {
 	dirs, log, closer, err := setup(o, name)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		return nil, watchdog.ExitFatal
+		return nil, exitFatal
 	}
 	lock, err := instance.Acquire(dirs.Root + string(os.PathSeparator) + "akari-client.lock")
 	if err != nil {
 		closer.Close()
 		if errors.Is(err, instance.ErrAlreadyRunning) {
 			fmt.Fprintln(os.Stderr, err)
-			return nil, watchdog.ExitAlreadyRunning
+			return nil, exitAlreadyRunning
 		}
 		fmt.Fprintln(os.Stderr, err)
-		return nil, watchdog.ExitFatal
+		return nil, exitFatal
 	}
 	fail := func(err error) (*deps, int) {
 		log.Error("startup", "err", err)
 		fmt.Fprintln(os.Stderr, err)
 		_ = lock.Release()
 		closer.Close()
-		return nil, watchdog.ExitFatal
+		return nil, exitFatal
 	}
 	dev, err := device.Load(dirs.Root, device.MachineID, time.Now())
 	if err != nil {
@@ -158,15 +137,25 @@ func build(o options, name string) (*deps, int) {
 	if err != nil {
 		return fail(err)
 	}
-	core.ForwardLogs(log)
-	core.SetLogLevel(map[string]string{"debug": "debug", "warn": "warning", "error": "error"}[o.logLevel])
-	eng := core.Default(dirs.Core)
+	bin, err := core.FindBinary()
+	if err != nil {
+		return fail(err)
+	}
+	if v, err := core.BinaryVersion(context.Background(), bin); err != nil {
+		return fail(err)
+	} else if v != core.MihomoVersion {
+		log.Warn("unexpected kernel version", "have", v, "want", core.MihomoVersion)
+	}
+	eng, err := core.NewEngine(bin, dirs.Core, log)
+	if err != nil {
+		return fail(err)
+	}
 	a, err := app.New(app.Deps{
 		Log:      log,
 		Dir:      dirs.Root,
 		Settings: st,
 		Engine:   eng,
-		Validate: core.Validate,
+		Validate: eng.Validate,
 		Fetcher: &subscription.Fetcher{
 			UserAgent: version.UserAgent(),
 			DeviceID:  dev.ID,
@@ -175,6 +164,8 @@ func build(o options, name string) (*deps, int) {
 		SysProxy: sysproxy.New(),
 		Clock:    clock.Real{},
 		Netwatch: &netwatch.Watcher{Clock: clock.Real{}},
+		// Destination hosts appear in the kernel's info logs: only with -log-level debug.
+		KernelLogLevel: map[bool]string{true: "debug", false: "warning"}[o.logLevel == "debug"],
 	})
 	if err != nil {
 		return fail(err)
@@ -234,7 +225,7 @@ func client(o options) int {
 func login(o options, url, token string) int {
 	d, code := build(o, "login")
 	if d == nil {
-		if code == watchdog.ExitAlreadyRunning {
+		if code == exitAlreadyRunning {
 			fmt.Fprintln(os.Stderr, "quit the running client first, or sign in from its Settings page")
 		}
 		return code
