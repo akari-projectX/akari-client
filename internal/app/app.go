@@ -227,9 +227,18 @@ func (a *App) onCoreEvent(st supervisor.State, err error) {
 	a.notify()
 }
 
-// Login validates the input, fetches and validates the profile, persists
-// everything and connects.
+// Login enrolls the subscription and connects.
 func (a *App) Login(ctx context.Context, input, token string) error {
+	if err := a.Enroll(ctx, input, token); err != nil {
+		return err
+	}
+	return a.Connect(ctx)
+}
+
+// Enroll validates the input, fetches and validates the profile and
+// persists it with the subscription URL (Connect=true, so the next launch
+// connects). It does not start the core.
+func (a *App) Enroll(ctx context.Context, input, token string) error {
 	u, err := subscription.Normalize(input, token)
 	if err != nil {
 		return err
@@ -254,6 +263,7 @@ func (a *App) Login(ctx context.Context, input, token string) error {
 		s.LastFetch = now
 		s.UserInfo = res.UserInfo
 		s.PanelInterval = res.IntervalHours
+		s.Connect = true
 	}); err != nil {
 		return err
 	}
@@ -261,8 +271,9 @@ func (a *App) Login(ctx context.Context, input, token string) error {
 	a.profile = res.Body
 	a.subErr = ""
 	a.mu.Unlock()
-	a.log.Info("logged in", "panel", subscription.Redact(u))
-	return a.Connect(ctx)
+	a.log.Info("subscription enrolled", "panel", subscription.Redact(u))
+	a.notify()
+	return nil
 }
 
 // Logout disconnects and forgets the subscription and profile.
