@@ -1,13 +1,14 @@
 # Third-party notices (akari-client)
 
-akari-client itself is proprietary (see LICENSE). A distribution consists of
+akari-client is licensed under the GNU GPL v3.0 (see LICENSE). A distribution consists of
 two programs:
 
-1. **akari-client** (proprietary) — statically links only the permissively
+1. **akari-client** (GPL-3.0) — statically links only the permissively
    licensed Go modules below.
 2. **mihomo** (GPL-3.0) — a separate, unmodified executable shipped next to
-   akari-client and started by it as a child process. It is *not* linked into
-   akari-client (enforced by `make check-boundary`; see docs/DECISIONS.md D1).
+   akari-client and started by it as a child process. It is kept out of the
+   client binary for robustness (crash isolation, reload races — see
+   docs/DECISIONS.md D1), enforced by `make check-boundary`.
 
 `make dist` writes, per platform, `THIRD-PARTY-LICENSES.txt` (full license and
 NOTICE texts of every module linked into akari-client, generated from the

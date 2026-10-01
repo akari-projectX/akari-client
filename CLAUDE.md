@@ -8,9 +8,8 @@
 
 ## 硬规则
 
-- **mihomo 是 GPL-3.0，不是 MIT**（PLAN.md 旧表述错误）。客户端模块禁止 import / require
-  任何 `github.com/metacubex/*`；内核只在 `third_party/mihomo`（独立 Go 模块）构建，
-  原样随客户端分发。`make check-boundary` 在 CI 中把关。
+- **许可证：akari-client 为 GPL-3.0 开源**（2026-10-02 用户决定；mihomo 同为 GPL-3.0）。每次发布须公开客户端与内核的对应源码。
+- 内核仍以独立子进程运行（崩溃隔离、避开 mihomo 重载时的全局变量竞态，见 D1），客户端模块不 import `github.com/metacubex/*`；内核只在 `third_party/mihomo`（独立 Go 模块）构建，原样随客户端分发。`make check-boundary` 在 CI 中把关。
 - 所有 mihomo 知识（配置键、CLI `-d -f -t -v`、REST 端点）只在 `internal/core`。升级内核：
   改 `third_party/mihomo/go.mod` + Makefile `MIHOMO_VERSION` + `core.MihomoVersion`，跑 `make ci`。
 - 订阅是不可信输入：只取 proxies / proxy-groups / rules（`core.BuildConfig` 白名单），

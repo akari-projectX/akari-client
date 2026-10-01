@@ -171,3 +171,6 @@ Single instance: exclusive non-blocking lock on `akari-client.lock`
 
 ## 2026-10-02: kernel bumped to v1.19.32
 License unchanged (GPL-3.0); upstream replace directives unchanged; `make ci` green (real-kernel integration tests, govulncheck: only allow-listed GO-2026-5932).
+
+## 2026-10-02: license — GPL-3.0
+User decision: akari-client is open source under GPL-3.0 (LICENSE replaced). The separate-process kernel architecture is kept for its robustness benefits (crash isolation, mihomo reload data races), not for licensing; the library engine from 886dfdd remains an option but is not planned.

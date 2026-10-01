@@ -66,6 +66,8 @@ Run locally without the tray:
 
 ## Licensing
 
-akari-client is proprietary (LICENSE). mihomo is GPL-3.0 and is shipped as an
-unmodified separate program; it must never be linked into the client
-(`make check-boundary`). See THIRD-PARTY-NOTICES.md and docs/DECISIONS.md D1.
+akari-client is free software under the GNU GPL v3.0 (LICENSE). mihomo (also
+GPL-3.0) is shipped as an unmodified separate program; it is kept out of the
+client binary for crash isolation (`make check-boundary`). Each release must
+publish the corresponding source of both. See THIRD-PARTY-NOTICES.md and
+docs/DECISIONS.md D1.
