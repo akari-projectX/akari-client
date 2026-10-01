@@ -51,6 +51,10 @@ func (f *fakeEngine) Start(sub []byte, o core.Options) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.starts++
+	if strings.Contains(string(sub), "kernel-rejects") {
+		f.running = false // like core.Engine: a refused reload stops the kernel
+		return errors.New("kernel rejected config")
+	}
 	f.running, f.profile, f.port = true, string(sub), o.MixedPort
 	f.nodes = nodesOf(f.profile)
 	if len(f.nodes) > 0 {
@@ -427,5 +431,53 @@ func TestSelfHeal(t *testing.T) {
 	<-done
 	if s, rs := starts(); s != 2 || rs != 2 {
 		t.Fatalf("starts=%d resets=%d", s, rs)
+	}
+}
+
+func TestRefreshRevertsWhenKernelRejects(t *testing.T) {
+	r := newRig(t, t.TempDir(), nil)
+	defer r.stop()
+	ctx := context.Background()
+	if err := r.app.Login(ctx, r.srv.URL+"/p/sub/"+tok, ""); err != nil {
+		t.Fatal(err)
+	}
+	r.panel.set(func(p *panel) { p.body, p.etag = prof2+"# kernel-rejects\n", `"bad"` })
+	if err := r.app.refresh(ctx); err == nil {
+		t.Fatal("rejected profile reported as success")
+	}
+	st := r.app.Status()
+	if st.Core != supervisor.Running || st.SubErr == "" {
+		t.Fatalf("status: %+v", st)
+	}
+	r.eng.mu.Lock()
+	running := r.eng.profile
+	r.eng.mu.Unlock()
+	if running != prof1 {
+		t.Fatalf("kernel runs %q", running)
+	}
+	if b, _ := os.ReadFile(filepath.Join(r.dir, ProfileFile)); string(b) != prof1 {
+		t.Fatal("rejected profile persisted")
+	}
+	if r.app.Settings().ETag != "" {
+		t.Fatal("etag of rejected profile kept")
+	}
+}
+
+func TestLoginWhileConnectedReloads(t *testing.T) {
+	p := &panel{body: prof1}
+	r := newRig(t, t.TempDir(), p)
+	defer r.stop()
+	ctx := context.Background()
+	if err := r.app.Login(ctx, r.srv.URL+"/a/sub/"+tok, ""); err != nil {
+		t.Fatal(err)
+	}
+	p.set(func(p *panel) { p.body = prof2 })
+	if err := r.app.Login(ctx, r.srv.URL+"/b/sub/"+tok, ""); err != nil {
+		t.Fatal(err)
+	}
+	r.eng.mu.Lock()
+	defer r.eng.mu.Unlock()
+	if r.eng.profile != prof2 || r.eng.starts != 2 {
+		t.Fatalf("profile=%q starts=%d", r.eng.profile, r.eng.starts)
 	}
 }

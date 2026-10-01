@@ -157,7 +157,12 @@ func (e *Engine) Validate(subscription []byte) error {
 	if err != nil {
 		return err
 	}
-	f, err := os.CreateTemp(e.home, "validate-*.yaml")
+	// Separate home: never contend with the running kernel's cache files.
+	dir := filepath.Join(e.home, "validate")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	f, err := os.CreateTemp(dir, "profile-*.yaml")
 	if err != nil {
 		return err
 	}
@@ -173,7 +178,8 @@ func (e *Engine) Validate(subscription []byte) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, e.bin, "-t", "-d", e.home, "-f", path)
+	cmd := exec.CommandContext(ctx, e.bin, "-t", "-d", dir, "-f", path)
+	cmd.Env = kernelEnv()
 	hideWindow(cmd)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -236,7 +242,11 @@ func (e *Engine) reloadLocked(subscription []byte, opts Options) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := e.api.reload(ctx, next); err != nil {
+		// Keep engine state and supervisor view consistent: a kernel that
+		// refused the new config is stopped; the caller decides what to
+		// run next (the app falls back to the previous profile).
 		_ = os.Remove(next)
+		e.stopLocked()
 		return fmt.Errorf("reload: %w", err)
 	}
 	if err := os.Rename(next, filepath.Join(e.home, configFile)); err != nil {

@@ -242,10 +242,14 @@ func (a *App) onCoreEvent(st supervisor.State, err error) {
 	a.notify()
 }
 
-// Login enrolls the subscription and connects.
+// Login enrolls the subscription and connects (reloading the kernel when
+// it already runs another profile).
 func (a *App) Login(ctx context.Context, input, token string) error {
 	if err := a.Enroll(ctx, input, token); err != nil {
 		return err
+	}
+	if st, _ := a.sup.State(); st == supervisor.Running {
+		return a.sup.Reload(ctx)
 	}
 	return a.Connect(ctx)
 }
@@ -360,14 +364,28 @@ func (a *App) refresh(ctx context.Context) error {
 		return nil
 	}
 	a.mu.Lock()
-	changed := string(a.profile) != string(res.Body)
+	prev := a.profile
+	changed := string(prev) != string(res.Body)
 	a.profile = res.Body
 	a.mu.Unlock()
 	a.log.Info("subscription updated", "changed", changed)
-	if changed {
-		if err := a.sup.Reload(ctx); err != nil {
-			a.log.Warn("reload after refresh failed (retrying)", "err", err)
+	if !changed {
+		return nil
+	}
+	if err := a.sup.Reload(ctx); err != nil && len(prev) > 0 {
+		// The kernel refused the new profile: go back to the previous one
+		// and forget the ETag so the next refresh fetches in full.
+		a.log.Warn("new profile failed to load; reverting to the previous one", "err", err)
+		a.mu.Lock()
+		a.profile = prev
+		a.mu.Unlock()
+		_ = store.WriteFile(filepath.Join(a.d.Dir, ProfileFile), prev)
+		_, _ = a.d.Settings.Update(func(x *settings.Settings) { x.ETag = "" })
+		if rerr := a.sup.Reload(ctx); rerr != nil {
+			a.log.Warn("reload of previous profile failed (retrying)", "err", rerr)
 		}
+		a.setSubErr(fmt.Errorf("new profile rejected by the kernel: %w", err))
+		return err
 	}
 	return nil
 }

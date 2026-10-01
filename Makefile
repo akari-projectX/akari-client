@@ -16,14 +16,15 @@ EXE     := $(shell go env GOEXE)
 # third_party/mihomo/go.mod.
 MIHOMO_VERSION = v1.19.31
 MIHOMO_LDFLAGS = -s -w -buildid= -X "github.com/metacubex/mihomo/constant.Version=$(MIHOMO_VERSION)"
-MIHOMO_BUILD   = cd third_party/mihomo && CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags '$(MIHOMO_LDFLAGS)'
+# $(call mihomo_build,<goos>,<goarch>,<output path>)
+mihomo_build = cd third_party/mihomo && GOOS=$(1) GOARCH=$(2) CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags '$(MIHOMO_LDFLAGS)' -o $(3) github.com/metacubex/mihomo
 
 # Host build: bin/akari-client + bin/mihomo.
 build: mihomo
 	$(BUILD) -ldflags "$(LDFLAGS)" -o bin/akari-client$(EXE) $(MAIN)
 
 mihomo:
-	$(MIHOMO_BUILD) -o $(CURDIR)/bin/mihomo$(EXE) github.com/metacubex/mihomo
+	$(call mihomo_build,$(shell go env GOOS),$(shell go env GOARCH),$(CURDIR)/bin/mihomo$(EXE))
 
 # Release layout: dist/<os>-<arch>/{akari-client,mihomo}[.exe] + SHA256SUMS.
 #   windows/amd64  pure Go, GUI subsystem (no console window)
@@ -38,17 +39,20 @@ clean-dist:
 
 dist-windows:
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 $(BUILD) -ldflags "$(LDFLAGS) -H windowsgui" -o dist/windows-amd64/akari-client.exe $(MAIN)
-	GOOS=windows GOARCH=amd64 $(MIHOMO_BUILD) -o $(CURDIR)/dist/windows-amd64/mihomo.exe github.com/metacubex/mihomo
+	$(call mihomo_build,windows,amd64,$(CURDIR)/dist/windows-amd64/mihomo.exe)
+	scripts/licenses.sh dist/windows-amd64 windows
 
 dist-linux:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(BUILD) -ldflags "$(LDFLAGS)" -o dist/linux-amd64/akari-client $(MAIN)
-	GOOS=linux GOARCH=amd64 $(MIHOMO_BUILD) -o $(CURDIR)/dist/linux-amd64/mihomo github.com/metacubex/mihomo
+	$(call mihomo_build,linux,amd64,$(CURDIR)/dist/linux-amd64/mihomo)
+	scripts/licenses.sh dist/linux-amd64 linux
 
 dist-darwin:
 	@[ "$$(uname -s)" = Darwin ] || { echo "dist-darwin needs a macOS host (cgo + Cocoa)"; exit 1; }
 	for a in arm64 amd64; do \
 	  GOOS=darwin GOARCH=$$a CGO_ENABLED=1 $(BUILD) -ldflags "$(LDFLAGS)" -o dist/darwin-$$a/akari-client $(MAIN) || exit 1; \
-	  (GOOS=darwin GOARCH=$$a $(MIHOMO_BUILD) -o $(CURDIR)/dist/darwin-$$a/mihomo github.com/metacubex/mihomo) || exit 1; \
+	  ($(call mihomo_build,darwin,$$a,$(CURDIR)/dist/darwin-$$a/mihomo)) || exit 1; \
+	  scripts/licenses.sh dist/darwin-$$a darwin || exit 1; \
 	done
 
 fmt-check:
