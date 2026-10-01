@@ -139,9 +139,11 @@ func TestEngineIntegration(t *testing.T) {
 	if d, err := e.DelayTest(ctx, "node-b", test); err != nil || d <= 0 {
 		t.Fatalf("delay: %v %v", d, err)
 	}
-	if _, err := e.DelayTest(ctx, "node-b", "http://127.0.0.1:1/unreachable"); err == nil {
+	short, cancel := context.WithTimeout(ctx, time.Second)
+	if _, err := e.DelayTest(short, "node-b", "http://127.0.0.1:1/unreachable"); err == nil {
 		t.Fatal("delay to closed port succeeded")
 	}
+	cancel()
 	all := e.DelayTestAll(ctx, test, 5*time.Second)
 	if len(all) != 2 || all["node-a"] <= 0 || all["node-b"] <= 0 {
 		t.Fatalf("delay all: %v", all)
@@ -169,12 +171,21 @@ func TestEngineIntegration(t *testing.T) {
 	if got := get(); got != "hello via mihomo" {
 		t.Fatalf("after reload: %q", got)
 	}
-	// Invalid profile on reload: rejected, old config keeps running.
+	// Validation while running uses its own directory (no cache-file
+	// contention with the live kernel).
+	if err := e.Validate([]byte(panelProfile)); err != nil {
+		t.Fatalf("validate while running: %v", err)
+	}
+	// Invalid profile on reload: rejected and the kernel is stopped (the
+	// app then restarts it with the previous profile).
 	if err := e.Start([]byte(strings.Replace(panelProfile, "uuid:", "uuidx:", 1)), Options{MixedPort: port2}); err == nil {
 		t.Fatal("bad reload accepted")
 	}
-	if err := e.Healthy(ctx); err != nil {
-		t.Fatalf("unhealthy after rejected reload: %v", err)
+	if e.Running() {
+		t.Fatal("kernel left running after rejected reload")
+	}
+	if err := e.Start([]byte(prof2), Options{MixedPort: port2}); err != nil {
+		t.Fatal(err)
 	}
 
 	// Crash: Healthy reports it; Start spawns a fresh kernel.
