@@ -10,9 +10,8 @@ BUILD    = go build -trimpath -buildvcs=false
 MAIN     = ./cmd/akari-client
 EXE     := $(shell go env GOEXE)
 
-# The kernel ships NEXT TO akari-client as a separate executable: mihomo is
-# GPL-3.0 and must never be linked into the proprietary client (see
-# docs/DECISIONS.md D1). Unmodified upstream source; dependency pins in
+# The kernel ships NEXT TO akari-client as a separate executable (crash
+# isolation; both are GPL-3.0 — see docs/DECISIONS.md D1). Unmodified upstream source; dependency pins in
 # third_party/mihomo/go.mod.
 MIHOMO_VERSION = v1.19.32
 MIHOMO_LDFLAGS = -s -w -buildid= -X "github.com/metacubex/mihomo/constant.Version=$(MIHOMO_VERSION)"
