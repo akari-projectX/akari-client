@@ -217,3 +217,60 @@ func TestReloadAndShutdown(t *testing.T) {
 	}
 	t.Fatal("core not stopped on shutdown")
 }
+
+type exitingCore struct {
+	fakeCore
+	mu   sync.Mutex
+	done chan struct{}
+}
+
+func (e *exitingCore) Start() error {
+	e.mu.Lock()
+	e.done = make(chan struct{})
+	e.mu.Unlock()
+	return e.fakeCore.Start()
+}
+
+func (e *exitingCore) Exited() <-chan struct{} {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.done
+}
+
+func (e *exitingCore) die() {
+	e.mu.Lock()
+	close(e.done)
+	e.mu.Unlock()
+	e.crash()
+}
+
+func TestExitRestartsWithoutHealthChecks(t *testing.T) {
+	ec := &exitingCore{}
+	clk := clock.NewFake(time.Unix(1_700_000_000, 0))
+	s := New(ec, clk, Config{HealthEvery: 10 * time.Second}, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { s.Run(ctx); close(done) }()
+	defer func() { cancel(); <-done }()
+	if err := s.Up(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	waitTimer(t, clk, 10*time.Second)
+	ec.die() // no clock advance: the exit alone triggers the restart path
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if st, err := s.State(); st == Backoff && err != nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("exit not noticed")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	waitTimer(t, clk, time.Second)
+	clk.Advance(time.Second)
+	waitTimer(t, clk, 10*time.Second)
+	if st, _ := s.State(); st != Running {
+		t.Fatalf("state = %v", st)
+	}
+}

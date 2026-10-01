@@ -47,6 +47,14 @@ type Core interface {
 	Healthy(ctx context.Context) error
 }
 
+// Exiter is optionally implemented by a Core whose failure is observable
+// directly (a child process exiting): the supervisor then restarts it
+// immediately instead of waiting for failed health checks.
+type Exiter interface {
+	// Exited returns a channel closed when the current run ends.
+	Exited() <-chan struct{}
+}
+
 // Config tunes the loop. Zero values select the defaults.
 type Config struct {
 	HealthEvery time.Duration // default 10s
@@ -217,6 +225,10 @@ func (s *Supervisor) Run(ctx context.Context) {
 			t = s.clk.NewTimer(wait)
 			timerC = t.C()
 		}
+		var exited <-chan struct{}
+		if ex, ok := s.core.(Exiter); ok && running {
+			exited = ex.Exited()
+		}
 		select {
 		case <-ctx.Done():
 			if t != nil {
@@ -254,6 +266,14 @@ func (s *Supervisor) Run(ctx context.Context) {
 				failures = 0
 				r.done <- start()
 			}
+		case <-exited:
+			if t != nil {
+				t.Stop()
+			}
+			_ = s.core.Stop()
+			running = false
+			failures++
+			s.set(Backoff, errors.New("core exited unexpectedly"))
 		case <-timerC:
 			if !want {
 				continue

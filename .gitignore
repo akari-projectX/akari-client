@@ -1,3 +1,4 @@
-/client
+/bin
 /dist
-node_modules
+/akari-client
+*.exe

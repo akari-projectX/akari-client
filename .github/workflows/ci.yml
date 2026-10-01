@@ -1,0 +1,82 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * *" # nightly: new Go/mihomo advisories
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: go (fmt, vet, license boundary, test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: make fmt-check
+      - run: make vet # linux + GOOS=windows
+      - run: make check-boundary # client must not link mihomo (GPL-3.0)
+      - run: make test # builds bin/mihomo; go test -race ./... incl. real-kernel integration
+
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: make vulncheck # client source
+      - run: make vulncheck-mihomo # shipped kernel binary (allow-list in Makefile)
+
+  build:
+    name: build (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows-amd64
+            os: ubuntu-latest
+            make: dist-windows
+          - target: linux-amd64
+            os: ubuntu-latest
+            make: dist-linux
+          - target: darwin-arm64+amd64
+            os: macos-latest # systray needs cgo/Cocoa on macOS
+            make: dist-darwin
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # git describe for the version string
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: make ${{ matrix.make }}
+      - name: smoke (version)
+        if: matrix.target != 'windows-amd64'
+        run: |
+          for d in dist/*/; do
+            case "$d" in *darwin-amd64/) [ "$(uname -m)" = x86_64 ] || continue ;; esac
+            "$d/akari-client" version
+            "$d/mihomo" -v
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: akari-client-${{ matrix.target }}
+          path: dist/
+          retention-days: 7

@@ -42,8 +42,13 @@ func (f *fakeCtl) SetPort(_ context.Context, p int) error {
 	f.port = p
 	return nil
 }
-func (f *fakeCtl) SetRefreshMinutes(m int) error { f.mu.Lock(); f.refresh = m; f.mu.Unlock(); return nil }
-func (f *fakeCtl) RefreshNow()                   {}
+func (f *fakeCtl) SetRefreshMinutes(m int) error {
+	f.mu.Lock()
+	f.refresh = m
+	f.mu.Unlock()
+	return nil
+}
+func (f *fakeCtl) RefreshNow() {}
 
 func TestSettingsPage(t *testing.T) {
 	ctl := &fakeCtl{}
