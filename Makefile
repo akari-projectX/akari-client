@@ -14,7 +14,7 @@ EXE     := $(shell go env GOEXE)
 # GPL-3.0 and must never be linked into the proprietary client (see
 # docs/DECISIONS.md D1). Unmodified upstream source; dependency pins in
 # third_party/mihomo/go.mod.
-MIHOMO_VERSION = v1.19.31
+MIHOMO_VERSION = v1.19.32
 MIHOMO_LDFLAGS = -s -w -buildid= -X "github.com/metacubex/mihomo/constant.Version=$(MIHOMO_VERSION)"
 # $(call mihomo_build,<goos>,<goarch>,<output path>)
 mihomo_build = cd third_party/mihomo && GOOS=$(1) GOARCH=$(2) CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags '$(MIHOMO_LDFLAGS)' -o $(3) github.com/metacubex/mihomo

@@ -1,7 +1,7 @@
 # akari-client
 
 自研桌面客户端（M4 MVP，分支 `feat/m4-mvp`）。Go 1.27；托盘 UI + 本地设置页；
-**mihomo v1.19.31 作为独立子进程**运行，经其 external-controller REST API 控制。
+**mihomo v1.19.32 作为独立子进程**运行，经其 external-controller REST API 控制。
 
 必读：`README.md`、`docs/DECISIONS.md`（D1–D9）、`docs/PACKAGING.md`（M4 剩余项）、
 `THIRD-PARTY-NOTICES.md`。
