@@ -1,12 +1,12 @@
 # akari-client decisions
 
-Status as of 2026-10-02 (M4 MVP, branch `feat/m4-mvp`). Each entry: decision,
-why, consequences. Supersedes the "client kernel" row of
-`../akari-panel/PLAN.md` §三 where they conflict (see D1).
+Status as of 2026-10-02 (M4 MVP). Each entry: decision, why, consequences.
+The client is paused; it was written against an older panel contract (see
+README, "Status").
 
 ## D1 — Kernel integration: separate mihomo process + REST controller (not library embedding)
 
-**Decision.** akari-client runs mihomo **v1.19.31** as a separate, unmodified
+**Decision.** akari-client runs mihomo (pinned in `third_party/mihomo`, now **v1.19.32**) as a separate, unmodified
 executable shipped next to it (`mihomo` / `mihomo.exe`) and controls it only
 through its CLI (`-d -f -t -v`) and its external-controller REST API on
 `127.0.0.1:<random port>` with a random 256-bit per-run secret. All of that
@@ -20,8 +20,8 @@ integration test proxied HTTP through the embedded kernel in 0.1 s. It was
 rejected for two reasons:
 
 1. **License — blocking.** mihomo is **GPL-3.0**, not MIT (verified in the
-   v1.19.31 module source: `LICENSE` is the GNU GPL v3; upstream Clash was
-   GPL-3.0 too). PLAN.md's premise "MIT allows closed-source embedding" is
+   module source: `LICENSE` is the GNU GPL v3; upstream Clash was
+   GPL-3.0 too). The planning premise "MIT allows closed-source embedding" was
    wrong. Linking it into akari-client would make the client a combined work
    that must be distributed under the GPL. Running it as a separate program
    that the client talks to over sockets/command line is the standard
@@ -39,7 +39,7 @@ rejected for two reasons:
   `github.com/metacubex/*` package. Only `third_party/mihomo` — a separate Go
   module containing nothing but dependency pins — builds the kernel.
 - GPL obligations for the kernel binary: ship its license text, offer the
-  corresponding source (upstream tag v1.19.31 + `third_party/mihomo/` build
+  corresponding source (the pinned upstream tag + `third_party/mihomo/` build
   files), do not modify it. See THIRD-PARTY-NOTICES.md and docs/PACKAGING.md.
 - Two executables per platform (client ≈ 10 MB, kernel ≈ 50 MB stripped).
 - The kernel is tied to the client's lifetime: Windows job object

@@ -1,6 +1,6 @@
 # akari-client
 
-自研桌面客户端（M4 MVP，分支 `feat/m4-mvp`）。Go 1.27；托盘 UI + 本地设置页；
+自研桌面客户端（M4 MVP，已暂停）。Go 1.27；托盘 UI + 本地设置页；
 **mihomo v1.19.32 作为独立子进程**运行，经其 external-controller REST API 控制。
 
 必读：`README.md`、`docs/DECISIONS.md`（D1–D9）、`docs/PACKAGING.md`（M4 剩余项）、
@@ -16,8 +16,10 @@
   再用 `mihomo -t` 校验；失败绝不替换正在运行的 profile。
 - 订阅 URL（前缀 + token）是凭据：只存 `settings.json`（0600），日志只写 `subscription.Redact`。
 - 内核日志默认 `warning`（`info` 会把访问的目标主机写盘）。
-- 面板契约（M4）：`GET https://<host>/<prefix>/sub/<token>`，UA `akari-client/<ver> mihomo`
-  → Clash YAML；404 = 统一拒绝；附带 `X-Akari-Device`（M5 前面板忽略）。M5 迁到 `/client/v1/*`。
+- 面板契约：UA `akari-client/<ver> mihomo` → Clash YAML；404 = 统一拒绝；附带 `X-Akari-Device`（面板忽略）。
+  **URL 形状已过期**：代码与测试按旧的 `https://<host>/<prefix>/sub/<token>` 规整，而当前面板的订阅是
+  `<订阅域名或主域名>/<订阅路径>/<token>`（无 `/sub/` 段、不含后台前缀）；恢复开发时先改 `internal/subscription` 与设置页。
+  硬限制（客户端内登录 + 席位）尚未设计，见面板 `docs/DEPLOY.md`「Akari 客户端对接（规划）」。
 
 ## 验收门
 

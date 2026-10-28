@@ -6,13 +6,22 @@ user's Clash profile from the panel and runs the
 **separate process** to provide a local mixed proxy (HTTP + SOCKS5) on
 `127.0.0.1:7890`, optionally set as the system proxy.
 
-Status: **M4 MVP** (Windows → macOS → Linux). Installers, code signing and
-the Windows manual test pass are still open — see docs/PACKAGING.md.
-Non-goals: rule editing, subscription aggregation, TUN mode, mobile.
+Status: **M4 MVP, paused** (Windows → macOS → Linux). Installers, code
+signing and the Windows manual test pass are still open — see
+docs/PACKAGING.md. Non-goals: rule editing, subscription aggregation, TUN
+mode, mobile.
+
+Panel contract: the client was written against `GET https://<host>/<prefix>/sub/<token>`
+(UA `akari-client/<ver> mihomo` → Clash YAML; 404 = the panel's single
+rejection). The current panel serves subscriptions at `/<sub path>/<token>`
+(no `/sub/` segment, no admin prefix), so the sign-in URL normalisation in
+`internal/subscription` and the settings page must be updated before the
+client can sign in to a current panel. The UA, the Clash output and the 404
+behaviour are unchanged.
 
 ## Features
 
-- Sign in once: subscription URL (`https://<host>/<prefix>/sub/<token>`) or
+- Sign in once: subscription URL (see "Panel contract" above) or
   panel URL + token, via the local settings page or `akari-client login`.
 - Profile fetch with UA `akari-client/<ver> mihomo`, header
   `X-Akari-Device` (M5 seat binding placeholder), ETag/If-None-Match, usage
@@ -61,7 +70,7 @@ cgo and a macOS host.
 
 Run locally without the tray:
 
-    ./bin/akari-client --data-dir /tmp/akari login https://panel.example.com/<prefix>/sub/<token>
+    ./bin/akari-client --data-dir /tmp/akari login <subscription URL>
     ./bin/akari-client --data-dir /tmp/akari --headless
 
 ## Licensing
