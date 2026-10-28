@@ -1,6 +1,6 @@
 module github.com/akari-projectX/akari-client/third_party/mihomo
 
-go 1.27.1
+go 1.27.3
 
 require (
 	github.com/metacubex/mihomo v1.19.32
