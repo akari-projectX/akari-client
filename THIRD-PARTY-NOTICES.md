@@ -58,7 +58,3 @@ limitations under the License.
   years (GPL-3.0 §6).
 - mihomo is a derivative of Clash (Dreamacro, GPL-3.0); copyright notices are
   in the upstream source.
-
-Note: earlier planning documents (`akari-panel/PLAN.md`, this repo's
-`LICENSE` and earlier `README.md`/`CLAUDE.md`) described mihomo as MIT. That
-is incorrect for v1.19.32; see docs/DECISIONS.md D1.
